@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "SharpSync": {
+      "commandName": "Project",
+      "commandLineArgs": "add . .. -z -v"
+    }
+  }
+}

@@ -25,7 +25,7 @@ Current program options are:
 - `sync`: Initiate sync.
 - `help`: Prints manual.
 
-Starting the program without arguments, prints out a help screen with all possible commands. You can also use `help`
+Starting the program without arguments prints out a help screen with all possible commands. You can also use `help`
 command on other commands, for example `help sync`.
 
 Examples:

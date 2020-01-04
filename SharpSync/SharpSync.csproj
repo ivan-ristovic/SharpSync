@@ -19,6 +19,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Reference Include="BlinkSyncLib">
+      <HintPath>..\Dependencies\BlinkSyncLib.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
     <None Update="SharpSync.db">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>

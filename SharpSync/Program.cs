@@ -92,7 +92,7 @@ namespace SharpSync
             Setup.Logger(o.Verbose);
 
             IReadOnlyList<SyncRule> rules = await DatabaseService.GetAllSyncRules();
-            SyncService.Sync(rules);
+            SyncService.SyncAll(rules);
         }
     }
 }

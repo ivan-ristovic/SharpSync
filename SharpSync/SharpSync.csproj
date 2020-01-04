@@ -20,7 +20,7 @@
 
   <ItemGroup>
     <None Update="SharpSync.db">
-      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>
 

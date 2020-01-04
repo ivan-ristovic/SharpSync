@@ -7,6 +7,7 @@ using Microsoft.EntityFrameworkCore;
 using Serilog;
 using SharpSync.Database;
 using SharpSync.Extensions;
+using SharpSync.Services.Common;
 
 namespace SharpSync.Services
 {
@@ -18,7 +19,10 @@ namespace SharpSync.Services
         {
             try {
                 using (var db = new DatabaseContext()) {
-                    List<SyncRule> rules = await db.SyncRules.ToListAsync();
+                    List<SyncRule> rules = await db.SyncRules
+                        .Include(r => r.Source)
+                        .Include(r => r.Destination)
+                        .ToListAsync();
                     return rules.AsReadOnly();
                 }
             } catch (Exception e) {
@@ -37,15 +41,19 @@ namespace SharpSync.Services
 
             try {
                 using (var db = new DatabaseContext()) {
-                    SyncRule? rule = db.SyncRules.AsEnumerable().FirstOrDefault(r => r.SourcePath.IsSubPathOf(srcPath));
-                    if (rule is { }) {
-                        Log.Warning("Rule containing {Source} is already present:", rule.SourcePath.ToString());
-                        Console.WriteLine(rule.ToTableRow(printTopLine: true));
+                    SourcePath? srcP = db.SourcePaths
+                        .Include(s => s.SyncRules)
+                        .ThenInclude(r => r.Destination)
+                        .AsEnumerable()
+                        .FirstOrDefault(r => r.Path.IsSubPathOf(srcPath));
+                    if (srcP is { }) {
+                        Log.Warning("Rule containing {Source} is already present:", srcP.Path.ToString());
+                        Console.WriteLine(string.Join(Environment.NewLine, srcP.SyncRules.Select(r => r.ToTableRow(printTopLine: true))));
                         return;
                     }
                     await db.AddAsync(new SyncRule {
-                        Source = srcPath,
-                        Destination = dstPath,
+                        Source = new SourcePath { Path = srcPath },
+                        Destination = new DestinationPath { Path = dstPath },
                         ShouldZip = zip,
                     });
                     await db.SaveChangesAsync();
@@ -72,12 +80,13 @@ namespace SharpSync.Services
                         SyncRule rule = await db.SyncRules.FindAsync(id);
                         if (rule is { }) {
                             db.Remove(rule);
-                            await db.SaveChangesAsync();
                             Log.Information("Rule {RuleId} successfully removed", id);
                         } else {
                             Log.Error("No rules with id {RuleId}", id);
                         }
                     }
+    
+                    await db.SaveChangesAsync();
                 }
             } catch (Exception e) {
                 Log.Error(e, "Failed to remove sync rule(s)");

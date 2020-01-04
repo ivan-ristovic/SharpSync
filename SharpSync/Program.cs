@@ -33,8 +33,8 @@ namespace SharpSync
             IReadOnlyList<SyncRule> rules = await DatabaseService.GetAllSyncRules();
             int padWidth = "Destination".Length;
             if (rules.Any()) {
-                int maxSrcWidth = Math.Max(padWidth, rules.Max(r => r.Source.Length));
-                int maxDstWidth = Math.Max(padWidth, rules.Max(r => r.Destination.Length));
+                int maxSrcWidth = Math.Max(padWidth, rules.Max(r => r.Source.Path.Length));
+                int maxDstWidth = Math.Max(padWidth, rules.Max(r => r.Destination.Path.Length));
                 padWidth = Math.Max(maxSrcWidth, maxDstWidth);
             }
             int tableWidth = padWidth + 9;

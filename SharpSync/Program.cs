@@ -16,15 +16,15 @@ namespace SharpSync
     {
         internal static Task Main(string[] args)
         {
-            return Parser.Default.ParseArguments<ListOptions, AddOptions, RemoveOptions>(args)
+            return Parser.Default.ParseArguments<ListOptions, AddOptions, RemoveOptions, SyncOptions>(args)
                 .MapResult(
                     (ListOptions o) => ListSyncRules(o),
                     (AddOptions o) => AddSyncRule(o),
                     (RemoveOptions o) => RemoveSyncRule(o),
+                    (SyncOptions o) => Synchronize(o),
                     errs => Task.FromResult(1)
                 );
         }
-
 
         private static async Task ListSyncRules(ListOptions _)
         {
@@ -85,6 +85,14 @@ namespace SharpSync
                 Log.Information("Removing all sync rules");
 
             return DatabaseService.RemoveSyncRules(o.Indexes);
+        }
+
+        private static async Task Synchronize(SyncOptions o)
+        {
+            Setup.Logger(o.Verbose);
+
+            IReadOnlyList<SyncRule> rules = await DatabaseService.GetAllSyncRules();
+            SyncService.Sync(rules);
         }
     }
 }

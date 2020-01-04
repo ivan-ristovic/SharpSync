@@ -39,5 +39,12 @@ namespace SharpSync.Common
         // TODO search
     }
 
-    // TODO sync, export, import, activate, deactivate
+    [Verb("sync", HelpText = "Synchronize.")]
+    internal sealed class SyncOptions
+    {
+        [Option('v', "verbose", Required = false, HelpText = "Set output to verbose messages.")]
+        public bool Verbose { get; set; }
+    }
+
+    // TODO export, import, activate, deactivate
 }

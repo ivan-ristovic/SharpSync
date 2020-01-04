@@ -15,6 +15,10 @@ namespace SharpSync.Services
     {
         // TODO config
 
+
+        public static DatabaseContext CreateContext()
+            => new DatabaseContext();
+
         public static async Task<IReadOnlyList<SyncRule>> GetAllSyncRules()
         {
             try {
@@ -47,7 +51,7 @@ namespace SharpSync.Services
                         .AsEnumerable()
                         .FirstOrDefault(r => r.Path.IsSubPathOf(srcPath));
                     if (srcP is { }) {
-                        Log.Warning("Rule containing {Source} is already present:", srcP.Path.ToString());
+                        Log.Warning("Rule containing {Source} is already present:", src.ToString());
                         Console.WriteLine(string.Join(Environment.NewLine, srcP.SyncRules.Select(r => r.ToTableRow(printTopLine: true))));
                         return;
                     }
@@ -85,7 +89,7 @@ namespace SharpSync.Services
                             Log.Error("No rules with id {RuleId}", id);
                         }
                     }
-    
+
                     await db.SaveChangesAsync();
                 }
             } catch (Exception e) {

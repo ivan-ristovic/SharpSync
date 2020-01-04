@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
@@ -28,10 +27,10 @@ namespace SharpSync.Services
 
         public static async Task AddSyncRule(SyncRule r)
         {
-            // TODO use full paths via FileInfo/DirectoryInfo
             // TODO check if rule is present (or contained inside another rule)
             try {
                 using (var db = new DatabaseContext()) {
+                    //db.SyncRules.FirstOrDefaultAsync(r => r.Source)
                     await db.AddAsync(r);
                     await db.SaveChangesAsync();
                 }
@@ -42,21 +41,30 @@ namespace SharpSync.Services
             }
         }
 
-        public static async Task RemoveSyncRule(int id)
+        public static async Task RemoveSyncRules(IEnumerable<int>? ids)
         {
             try {
                 using (var db = new DatabaseContext()) {
-                    SyncRule rule = await db.SyncRules.FindAsync(id);
-                    if (rule is { }) {
-                        db.Remove(rule);
+                    if (ids is null || !ids.Any()) {
+                        db.RemoveRange(db.SyncRules);
                         await db.SaveChangesAsync();
-                        Log.Information("Rule {RuleId} successfully removed", id);
-                    } else {
-                        Log.Error("No rules match given ID");
+                        Log.Information("All rules successfully removed");
+                        return;
+                    }
+
+                    foreach (int id in ids) {
+                        SyncRule rule = await db.SyncRules.FindAsync(id);
+                        if (rule is { }) {
+                            db.Remove(rule);
+                            await db.SaveChangesAsync();
+                            Log.Information("Rule {RuleId} successfully removed", id);
+                        } else {
+                            Log.Error("No rules with id {RuleId}", id);
+                        }
                     }
                 }
             } catch (Exception e) {
-                Log.Error(e, "Failed to remove sync rule");
+                Log.Error(e, "Failed to remove sync rule(s)");
                 throw e;
             }
         }

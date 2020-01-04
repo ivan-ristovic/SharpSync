@@ -7,7 +7,9 @@ namespace SharpSync.Database
         public virtual DbSet<SyncRule> SyncRules { get; set; }
 
 
+#pragma warning disable CS8618 // Non-nullable field is uninitialized. Consider declaring as nullable.
         public DatabaseContext()
+#pragma warning restore CS8618 // Non-nullable field is uninitialized. Consider declaring as nullable.
         {
 
         }

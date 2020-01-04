@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -25,30 +26,32 @@ namespace SharpSync
         }
 
 
-        private static async Task ListSyncRules(ListOptions o)
+        private static async Task ListSyncRules(ListOptions _)
         {
             Setup.Logger(verbose: false);
 
             IReadOnlyList<SyncRule> rules = await DatabaseService.GetAllSyncRules();
-            int maxSrcWidth = rules.Max(r => r.Source.Length);
-            int maxDstWidth = rules.Max(r => r.Destination.Length);
-            int tableWidth = maxSrcWidth + maxDstWidth + 19;
+            int padWidth = "Destination".Length;
+            if (rules.Any()) {
+                int maxSrcWidth = Math.Max(padWidth, rules.Max(r => r.Source.Length));
+                int maxDstWidth = Math.Max(padWidth, rules.Max(r => r.Destination.Length));
+                padWidth = Math.Max(maxSrcWidth, maxDstWidth);
+            }
+            int tableWidth = padWidth + 9;
 
             var sb = new StringBuilder(Environment.NewLine);
             AppendBorder(sb, tableWidth);
-            AppendHeader(sb, maxSrcWidth, maxDstWidth);
+            AppendHeader(sb, padWidth);
             AppendBorder(sb, tableWidth);
-            sb.AppendJoin(Environment.NewLine, rules.Select(r => r.ToTableRow(maxSrcWidth, maxDstWidth))).AppendLine();
             AppendBorder(sb, tableWidth);
+            if (rules.Any())
+                sb.AppendJoin(Environment.NewLine, rules.Select(r => r.ToTableRow(padWidth))).AppendLine();
             Log.Information("Registered sync rules: {Rules}", sb.ToString());
 
 
-            static StringBuilder AppendHeader(StringBuilder sb, int srcWidth, int dstWidth)
-                => sb.Append("|   ID | ")
-                     .Append("Source".PadRight(srcWidth))
-                     .Append(" | ")
-                     .Append("Destination".PadRight(dstWidth))
-                     .Append(" | Zip? |").AppendLine();
+            static StringBuilder AppendHeader(StringBuilder sb, int padWidth)
+                => sb.Append("|   ID | ").Append("Source".PadRight(padWidth)).AppendLine(" |")
+                     .Append("| Zip? | ").Append("Destination".PadRight(padWidth)).AppendLine(" |");
 
             static StringBuilder AppendBorder(StringBuilder sb, int width)
                 => sb.Append('+').Append('-', width).Append('+').AppendLine();
@@ -62,8 +65,8 @@ namespace SharpSync
                 Log.Information("Compression requested.");
 
             return DatabaseService.AddSyncRule(new SyncRule {
-                Source = o.Source ?? throw new ArgumentException("Missing sync source path"),
-                Destination = o.Destination ?? throw new ArgumentException("Missing sync destination path"),
+                Source = Path.GetFullPath(o.Source ?? throw new ArgumentException("Missing sync source path")),
+                Destination = Path.GetFullPath(o.Destination ?? throw new ArgumentException("Missing sync destination path")),
                 ShouldZip = o.ShouldZip,
             });
         }
@@ -71,13 +74,16 @@ namespace SharpSync
         private static Task RemoveSyncRule(RemoveOptions o)
         {
             Setup.Logger(o.Verbose);
-            if (o.Index is { }) {
-                Log.Information("Removing sync rule {RuleIndex}", o.Index);
-                return DatabaseService.RemoveSyncRule(o.Index.Value);
-            } else {
-                Log.Error("Rule index missing");
+            if ((o.Indexes is null || !o.Indexes.Any()) && !o.All) {
+                Log.Warning("No ID specified to remove. Did you want to remove all sync rules? If so, use option `-a`.");
                 return Task.CompletedTask;
             }
+            if (o.Indexes.Any())
+                Log.Information("Removing sync rule(s): {RuleIndexes}", o.Indexes);
+            else
+                Log.Information("Removing all sync rules");
+
+            return DatabaseService.RemoveSyncRules(o.Indexes);
         }
     }
 }

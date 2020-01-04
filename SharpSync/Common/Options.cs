@@ -1,4 +1,5 @@
-﻿using CommandLine;
+﻿using System.Collections.Generic;
+using CommandLine;
 
 namespace SharpSync.Common
 {
@@ -24,14 +25,18 @@ namespace SharpSync.Common
         [Option('v', "verbose", Required = false, HelpText = "Set output to verbose messages.")]
         public bool Verbose { get; set; }
 
-        [Value(0, Required = true, HelpText = "Index of rule to remove.")]
-        public int? Index { get; set; }
+        [Option('a', "all", Required = false, HelpText = "Remove all sync rules.")]
+        public bool All { get; set; }
+
+        [Value(0, Required = false, HelpText = "IDs of rule(s) to remove.")]
+        public IEnumerable<int>? Indexes { get; set; }
     }
 
     [Verb("list", HelpText = "List all registered sync rules.")]
     internal sealed class ListOptions
     {
-
+        // TODO filters?
+        // TODO search
     }
 
     // TODO sync, export, import, activate, deactivate

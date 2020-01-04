@@ -16,9 +16,6 @@ namespace SharpSync.Services
         // TODO config
 
 
-        public static DatabaseContext CreateContext()
-            => new DatabaseContext();
-
         public static async Task<IReadOnlyList<SyncRule>> GetAllSyncRules()
         {
             try {

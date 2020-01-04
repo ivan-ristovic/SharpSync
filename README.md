@@ -87,3 +87,11 @@ Examples:
 +----------------------+
 ```
 - args: `sync`
+
+
+## Next steps?
+- More options: include/exclude lists (via regexes), rule search, rule activation/deactivation
+- Export/Import rules
+- Database configuration, other DB providers (SQL Server, PostgreSQL)
+- Multiple sync destinations
+- and more, these are only ones I remember at this time...

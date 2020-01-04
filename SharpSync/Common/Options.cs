@@ -33,4 +33,6 @@ namespace SharpSync.Common
     {
 
     }
+
+    // TODO sync, export, import, activate, deactivate
 }

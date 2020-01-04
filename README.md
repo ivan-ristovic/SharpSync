@@ -50,7 +50,6 @@ Examples:
 [00:47:32 INF] Adding sync rule test2/src -> test2/dst
 [00:47:33 INF] Rule successfully added
 ```
-list: 
 ```
 [00:47:40 INF] Registered sync rules:
 +----------------------+
@@ -76,7 +75,6 @@ list:
 [00:49:25 INF] Rule 2 successfully removed
 [00:49:25 INF] Rule 3 successfully removed
 ```
-list: 
 ```
 [00:49:30 INF] Registered sync rules:
 +----------------------+

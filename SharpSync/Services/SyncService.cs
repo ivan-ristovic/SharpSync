@@ -24,7 +24,8 @@ namespace SharpSync.Services
                     }
 
                     var sync = new Sync(rule.Source.Path, rule.Destination.Path);
-                    // TODO sync.Configuration = new InputParams { };
+                    // TODO allow config to be passed through cmd args
+                    sync.Configuration = new InputParams { DeleteFromDest = true };
                     sync.Log = m => Log.Debug("SyncLib: {SyncLibLogMessage}", m);
                     sync.Start();
 

@@ -64,11 +64,12 @@ namespace SharpSync
             if (o.ShouldZip)
                 Log.Information("Compression requested.");
 
-            return DatabaseService.AddSyncRule(new SyncRule {
-                Source = Path.GetFullPath(o.Source ?? throw new ArgumentException("Missing sync source path")),
-                Destination = Path.GetFullPath(o.Destination ?? throw new ArgumentException("Missing sync destination path")),
-                ShouldZip = o.ShouldZip,
-            });
+            if (string.IsNullOrWhiteSpace(o.Source) || string.IsNullOrWhiteSpace(o.Destination)) { 
+                Log.Fatal("Need to provide source and destination paths");
+                return Task.CompletedTask;
+            }
+
+            return DatabaseService.AddSyncRule(o.Source, o.Destination, o.ShouldZip);
         }
 
         private static Task RemoveSyncRule(RemoveOptions o)

@@ -2,7 +2,7 @@
   "profiles": {
     "SharpSync": {
       "commandName": "Project",
-      "commandLineArgs": "list"
+      "commandLineArgs": "add test1/../abc.txt~ test/res -v"
     }
   }
 }

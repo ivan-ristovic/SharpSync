@@ -1,10 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
 using SharpSync.Database;
+using SharpSync.Extensions;
 
 namespace SharpSync.Services
 {
@@ -25,13 +27,27 @@ namespace SharpSync.Services
             }
         }
 
-        public static async Task AddSyncRule(SyncRule r)
+        public static async Task AddSyncRule(string src, string dst, bool zip)
         {
-            // TODO check if rule is present (or contained inside another rule)
+            if (string.IsNullOrWhiteSpace(src) || string.IsNullOrWhiteSpace(dst))
+                return;
+
+            string srcPath = Path.GetFullPath(src);
+            string dstPath = Path.GetFullPath(dst);
+
             try {
                 using (var db = new DatabaseContext()) {
-                    //db.SyncRules.FirstOrDefaultAsync(r => r.Source)
-                    await db.AddAsync(r);
+                    SyncRule? rule = db.SyncRules.AsEnumerable().FirstOrDefault(r => r.SourcePath.IsSubPathOf(srcPath));
+                    if (rule is { }) {
+                        Log.Warning("Rule containing {Source} is already present:", rule.SourcePath.ToString());
+                        Console.WriteLine(rule.ToTableRow(printTopLine: true));
+                        return;
+                    }
+                    await db.AddAsync(new SyncRule {
+                        Source = srcPath,
+                        Destination = dstPath,
+                        ShouldZip = zip,
+                    });
                     await db.SaveChangesAsync();
                 }
                 Log.Information("Rule successfully added");

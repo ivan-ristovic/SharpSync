@@ -22,8 +22,12 @@ namespace SharpSync.Database
         public bool ShouldZip { get; set; }
 
 
-        public override string ToString() 
-            => $"{this.Id.ToString().PadLeft(4, ' ')}: {this.Source} -> {this.Destination} {(this.ShouldZip ? "(z)": "")}";
+        public string ToTableRow(int? padSrc = null, int? padDst = null)
+        {
+            string src = padSrc is null ? this.Source : this.Source.PadRight(padSrc.Value);
+            string dst = padDst is null ? this.Destination : this.Destination.PadRight(padDst.Value);
+            return $"| {this.Id.ToString().PadLeft(4, ' ')} | {src} | {dst} | {(this.ShouldZip ? "Yes ": " No ")} |";
+        }
     }
 
 #pragma warning restore CS8618 // Non-nullable field is uninitialized. Consider declaring as nullable.

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
 using CommandLine;
 using Serilog;
@@ -12,7 +13,7 @@ namespace SharpSync
 {
     internal static class Program
     {
-        internal static Task<int> Main(string[] args)
+        internal static Task Main(string[] args)
         {
             return Parser.Default.ParseArguments<ListOptions, AddOptions, RemoveOptions>(args)
                 .MapResult(
@@ -24,54 +25,59 @@ namespace SharpSync
         }
 
 
-        private static Task<int> ListSyncRules(ListOptions o)
+        private static async Task ListSyncRules(ListOptions o)
         {
             Setup.Logger(verbose: false);
-            Log.Information("Registered sync rules:");
 
-            IReadOnlyList<SyncRule> rules = DatabaseService.GetAllSyncRules();
-            if (rules.Count > 0)
-                Console.WriteLine(string.Join(Environment.NewLine, rules));
-            else
-                Log.Information("Sync rule list is empty.");
+            IReadOnlyList<SyncRule> rules = await DatabaseService.GetAllSyncRules();
+            int maxSrcWidth = rules.Max(r => r.Source.Length);
+            int maxDstWidth = rules.Max(r => r.Destination.Length);
+            int tableWidth = maxSrcWidth + maxDstWidth + 19;
 
-            return Task.FromResult(0);
+            var sb = new StringBuilder(Environment.NewLine);
+            AppendBorder(sb, tableWidth);
+            AppendHeader(sb, maxSrcWidth, maxDstWidth);
+            AppendBorder(sb, tableWidth);
+            sb.AppendJoin(Environment.NewLine, rules.Select(r => r.ToTableRow(maxSrcWidth, maxDstWidth))).AppendLine();
+            AppendBorder(sb, tableWidth);
+            Log.Information("Registered sync rules: {Rules}", sb.ToString());
+
+
+            static StringBuilder AppendHeader(StringBuilder sb, int srcWidth, int dstWidth)
+                => sb.Append("|   ID | ")
+                     .Append("Source".PadRight(srcWidth))
+                     .Append(" | ")
+                     .Append("Destination".PadRight(dstWidth))
+                     .Append(" | Zip? |").AppendLine();
+
+            static StringBuilder AppendBorder(StringBuilder sb, int width)
+                => sb.Append('+').Append('-', width).Append('+').AppendLine();
         }
 
-        private static async Task<int> AddSyncRule(AddOptions o)
+        private static Task AddSyncRule(AddOptions o)
         {
             Setup.Logger(o.Verbose);
             Log.Information("Adding sync rule {Source} -> {Destination}", o.Source, o.Destination);
             if (o.ShouldZip)
-                Log.Information("Compression requested");
-            
-            // TODO move to db service
-            try {
-                using (var db = new DatabaseContext()) {
-                    await db.AddAsync(new SyncRule {
-                        Source = o.Source ?? throw new ArgumentException("Missing sync source path."),
-                        Destination = o.Destination ?? throw new ArgumentException("Missing sync destination path."),
-                        ShouldZip = o.ShouldZip,
-                    });
-                    await db.SaveChangesAsync();
-                }
-            } catch (Exception e) {
-                Log.Error(e, "Failed to add sync rule!");
-                return 1;
-            }
+                Log.Information("Compression requested.");
 
-            Log.Information("Rule successfully added.");
-            return 0;
+            return DatabaseService.AddSyncRule(new SyncRule {
+                Source = o.Source ?? throw new ArgumentException("Missing sync source path"),
+                Destination = o.Destination ?? throw new ArgumentException("Missing sync destination path"),
+                ShouldZip = o.ShouldZip,
+            });
         }
 
-        private static async Task<int> RemoveSyncRule(RemoveOptions o)
+        private static Task RemoveSyncRule(RemoveOptions o)
         {
             Setup.Logger(o.Verbose);
-            Log.Information("Removing sync rule {RuleIndex}", o.Index);
-
-            // TODO implement in db service
-
-            return 0;
+            if (o.Index is { }) {
+                Log.Information("Removing sync rule {RuleIndex}", o.Index);
+                return DatabaseService.RemoveSyncRule(o.Index.Value);
+            } else {
+                Log.Error("Rule index missing");
+                return Task.CompletedTask;
+            }
         }
     }
 }

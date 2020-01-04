@@ -4,7 +4,7 @@ namespace SharpSync.Database
 {
     public class DatabaseContext : DbContext
     {
-        public virtual DbSet<SyncRule>? SyncRules { get; set; }
+        public virtual DbSet<SyncRule> SyncRules { get; set; }
 
 
         public DatabaseContext()

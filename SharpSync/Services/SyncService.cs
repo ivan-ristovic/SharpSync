@@ -1,17 +1,21 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Text;
+using System.Linq;
 using BlinkSyncLib;
 using Serilog;
+using SharpSync.Common;
 using SharpSync.Database;
 
 namespace SharpSync.Services
 {
-    public static class SyncService
+    internal static class SyncService
     {
-        public static void SyncAll(IReadOnlyList<SyncRule> rules)
+        public static void SyncAll(IReadOnlyList<SyncRule> rules, SyncOptions opts)
         {
+            if (!rules.Any())
+                Log.Warning("Nothing to sync");
+
             foreach (SyncRule rule in rules) {
                 Log.Debug("Processing rule {RuleId}", rule.Id);
                 try {
@@ -24,8 +28,19 @@ namespace SharpSync.Services
                     }
 
                     var sync = new Sync(rule.Source.Path, rule.Destination.Path);
-                    // TODO allow config to be passed through cmd args
-                    sync.Configuration = new InputParams { DeleteFromDest = true };
+                    var conf = new InputParams {
+                        DeleteFromDest = opts.DeleteExtra,
+                        ExcludeHidden = opts.IncludeHidden,
+                    };
+                    if (opts.ExcludeDirs?.Any() ?? false)
+                        conf.ExcludeDirs = opts.ExcludeDirs?.ToArray();
+                    if (opts.ExcludeFiles?.Any() ?? false)
+                        conf.ExcludeFiles = opts.ExcludeFiles?.ToArray();
+                    if (opts.IncludeDirs?.Any() ?? false)
+                        conf.IncludeDirs = opts.IncludeDirs?.ToArray();
+                    if (opts.IncludeFiles?.Any() ?? false)
+                        conf.IncludeFiles = opts.IncludeFiles?.ToArray();
+                    sync.Configuration = conf;
                     sync.Log = m => Log.Debug("SyncLib: {SyncLibLogMessage}", m);
                     sync.Start();
 

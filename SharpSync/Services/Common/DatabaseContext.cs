@@ -30,10 +30,12 @@ namespace SharpSync.Services.Common
         {
             modelBuilder.Entity<SyncRule>()
                 .HasOne(r => r.Source)
-                .WithMany(s => s.SyncRules);
+                .WithMany(s => s.SyncRules)
+                .OnDelete(DeleteBehavior.Cascade);
             modelBuilder.Entity<SyncRule>()
                 .HasOne(r => r.Destination)
-                .WithMany(s => s.SyncRules);
+                .WithMany(s => s.SyncRules)
+                .OnDelete(DeleteBehavior.Cascade);
         }
     }
 }

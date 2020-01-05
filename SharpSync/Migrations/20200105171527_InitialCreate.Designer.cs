@@ -8,7 +8,7 @@ using SharpSync.Services.Common;
 namespace SharpSync.Migrations
 {
     [DbContext(typeof(DatabaseContext))]
-    [Migration("20200104214409_InitialCreate")]
+    [Migration("20200105171527_InitialCreate")]
     partial class InitialCreate
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -17,7 +17,7 @@ namespace SharpSync.Migrations
             modelBuilder
                 .HasAnnotation("ProductVersion", "3.1.0");
 
-            modelBuilder.Entity("SharpSync.Database.Destination", b =>
+            modelBuilder.Entity("SharpSync.Database.DestinationPath", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -34,7 +34,7 @@ namespace SharpSync.Migrations
                     b.ToTable("destinations");
                 });
 
-            modelBuilder.Entity("SharpSync.Database.Source", b =>
+            modelBuilder.Entity("SharpSync.Database.SourcePath", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -81,13 +81,13 @@ namespace SharpSync.Migrations
 
             modelBuilder.Entity("SharpSync.Database.SyncRule", b =>
                 {
-                    b.HasOne("SharpSync.Database.Destination", "Destination")
+                    b.HasOne("SharpSync.Database.DestinationPath", "Destination")
                         .WithMany("SyncRules")
                         .HasForeignKey("DestinationId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("SharpSync.Database.Source", "Source")
+                    b.HasOne("SharpSync.Database.SourcePath", "Source")
                         .WithMany("SyncRules")
                         .HasForeignKey("SourceId")
                         .OnDelete(DeleteBehavior.Cascade)

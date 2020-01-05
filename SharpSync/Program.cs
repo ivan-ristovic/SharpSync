@@ -90,9 +90,8 @@ namespace SharpSync
         private static async Task Synchronize(SyncOptions o)
         {
             Setup.Logger(o.Verbose);
-
             IReadOnlyList<SyncRule> rules = await DatabaseService.GetAllSyncRules();
-            SyncService.SyncAll(rules);
+            SyncService.SyncAll(rules, o);
         }
     }
 }

@@ -71,16 +71,29 @@ namespace SharpSync.Services
             try {
                 using (var db = new DatabaseContext()) {
                     if (ids is null || !ids.Any()) {
-                        db.RemoveRange(db.SyncRules);
+                        db.SyncRules.RemoveRange(db.SyncRules);
+                        db.SourcePaths.RemoveRange(db.SourcePaths);
+                        db.DestinationPaths.RemoveRange(db.DestinationPaths);
                         await db.SaveChangesAsync();
                         Log.Information("All rules successfully removed");
                         return;
                     }
 
                     foreach (int id in ids) {
-                        SyncRule rule = await db.SyncRules.FindAsync(id);
+                        SyncRule? rule = await db.SyncRules
+                            .Include(r => r.Source)
+                            .ThenInclude(s => s.SyncRules)
+                            .Include(r => r.Destination)
+                            .ThenInclude(d => d.SyncRules)
+                            .SingleOrDefaultAsync(r => r.Id == id)
+                            ;
+                        
                         if (rule is { }) {
-                            db.Remove(rule);
+                            db.SyncRules.Remove(rule);
+                            if (rule.Source.SyncRules.Count == 1)
+                                db.SourcePaths.Remove(rule.Source);
+                            if (rule.Destination.SyncRules.Count == 1)
+                                db.DestinationPaths.Remove(rule.Destination);
                             Log.Information("Rule {RuleId} successfully removed", id);
                         } else {
                             Log.Error("No rules with id {RuleId}", id);

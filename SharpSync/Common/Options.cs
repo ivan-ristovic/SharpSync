@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using CommandLine;
+using Microsoft.Extensions.Logging;
 
 namespace SharpSync.Common
 {
@@ -11,6 +12,9 @@ namespace SharpSync.Common
 
         [Option('c', "config", Required = false, HelpText = "Configuration file path.")]
         public string? ConfigPath { get; set; }
+
+        [Option('l', "log-level", Required = false, HelpText = "Logging level (1 - Debug, 5 - Critical, 6 - None).")]
+        public LogLevel LogLevel { get; set; }
     }
 
 
@@ -28,6 +32,24 @@ namespace SharpSync.Common
 
         [Option('t', "top", Required = false, HelpText = "Top directory only.")]
         public bool TopDirectoryOnly { get; set; }
+
+        [Option('d', "delete", Required = false, HelpText = "Delete files from destination path which aren't found in source path.")]
+        public bool DeleteExtra { get; set; }
+
+        [Option('h', "hidden", Required = false, HelpText = "Include hidden files.")]
+        public bool IncludeHidden { get; set; }
+
+        [Option("exclude-dirs", SetName = "exclude", Required = false, HelpText = "Directories to exclude (regex).")]
+        public IEnumerable<Regex>? ExcludeDirs { get; set; }
+
+        [Option("exclude-files", SetName = "exclude", Required = false, HelpText = "Files to exclude (regex).")]
+        public IEnumerable<Regex>? ExcludeFiles { get; set; }
+
+        [Option("include-dirs", SetName = "include", Required = false, HelpText = "Directories to include (regex).")]
+        public IEnumerable<Regex>? IncludeDirs { get; set; }
+
+        [Option("include-files", SetName = "include", Required = false, HelpText = "Files to include (regex).")]
+        public IEnumerable<Regex>? IncludeFiles { get; set; }
     }
 
     [Verb("remove", HelpText = "Remove existing sync rule.")]
@@ -52,23 +74,7 @@ namespace SharpSync.Common
     [Verb("sync", HelpText = "Synchronize.")]
     internal sealed class SyncOptions : SyncOptionsBase
     {
-        [Option('d', "delete", Required = false, HelpText = "Delete files from destination path which aren't found in source path.")]
-        public bool DeleteExtra { get; set; }
 
-        [Option('h', "hidden", Required = false, HelpText = "Include hidden files.")]
-        public bool IncludeHidden { get; set; }
-
-        [Option("exclude-dirs", SetName = "exlucde", Required = false, HelpText = "Directories to exclude (regex).")]
-        public IEnumerable<Regex>? ExcludeDirs { get; set; }
-
-        [Option("exclude-files", SetName = "exlucde", Required = false, HelpText = "Files to exclude (regex).")]
-        public IEnumerable<Regex>? ExcludeFiles { get; set; }
-
-        [Option("include-dirs", SetName = "include", Required = false, HelpText = "Directories to include (regex).")]
-        public IEnumerable<Regex>? IncludeDirs { get; set; }
-
-        [Option("include-files", SetName = "include", Required = false, HelpText = "Files to include (regex).")]
-        public IEnumerable<Regex>? IncludeFiles { get; set; }
     }
 
     // TODO export, import, activate, deactivate

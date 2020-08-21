@@ -1,5 +1,7 @@
-﻿using System.Linq;
+﻿using System.Collections.Generic;
+using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using Newtonsoft.Json;
 
 namespace SharpSync.Common
@@ -18,8 +20,26 @@ namespace SharpSync.Common
         [JsonProperty("zip")]
         public bool ShouldZip { get; set; }
 
-        [JsonProperty("top")]
+        [JsonProperty("top-only")]
         public bool TopDirectoryOnly { get; set; }
+
+        [JsonProperty("del-extra")]
+        public bool DeleteExtra { get; set; }
+
+        [JsonProperty("include-hidden")]
+        public bool IncludeHidden { get; set; }
+
+        [JsonProperty("exclude-dirs")]
+        public IEnumerable<Regex>? ExcludeDirs { get; set; }
+
+        [JsonProperty("exclude-files")]
+        public IEnumerable<Regex>? ExcludeFiles { get; set; }
+
+        [JsonProperty("include-dirs")]
+        public IEnumerable<Regex>? IncludeDirs { get; set; }
+
+        [JsonProperty("include-files")]
+        public IEnumerable<Regex>? IncludeFiles { get; set; }
 
 
         public string ToTableRow(int? padWidth = null, bool printTopLine = false)

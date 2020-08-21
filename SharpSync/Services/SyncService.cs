@@ -69,7 +69,7 @@ namespace SharpSync.Services
         public IReadOnlyList<SyncRule> GetRules()
             => this.Config.Rules?.AsReadOnly() ?? new List<SyncRule>().AsReadOnly();
 
-        public async Task SyncAsync(SyncOptions opts)
+        public async Task SyncAsync(SyncOptions _)
         {
             if (this.Config.Rules is null || !this.Config.Rules.Any()) {
                 Log.Warning("Nothing to sync");
@@ -87,22 +87,7 @@ namespace SharpSync.Services
                         continue;
                     }
 
-                    var sync = new Sync(rule.SrcPath, rule.DstPath);
-                    var conf = new InputParams {
-                        DeleteFromDest = opts.DeleteExtra,
-                        ExcludeHidden = opts.IncludeHidden,
-                    };
-                    if (opts.ExcludeDirs?.Any() ?? false)
-                        conf.ExcludeDirs = opts.ExcludeDirs?.ToArray();
-                    if (opts.ExcludeFiles?.Any() ?? false)
-                        conf.ExcludeFiles = opts.ExcludeFiles?.ToArray();
-                    if (opts.IncludeDirs?.Any() ?? false)
-                        conf.IncludeDirs = opts.IncludeDirs?.ToArray();
-                    if (opts.IncludeFiles?.Any() ?? false)
-                        conf.IncludeFiles = opts.IncludeFiles?.ToArray();
-                    sync.Log = m => Log.Debug("SyncLib: {SyncLibLogMessage}", m);
-                    sync.Start(conf);
-
+                    await this.ProcessRuleAsync(rule);
                 } catch (FileNotFoundException e) {
                     Log.Error(e, "Source/Destination not found for rule:{NL}{Rule}", Environment.NewLine, rule.ToTableRow(printTopLine: true));
                 } catch (IOException e) {
@@ -111,6 +96,26 @@ namespace SharpSync.Services
             }
 
             Log.Information("Finished syncing");
+        }
+
+
+        private async Task ProcessRuleAsync(SyncRule rule)
+        {
+            var sync = new Sync(rule.SrcPath, rule.DstPath);
+            var conf = new InputParams {
+                DeleteFromDest = rule.DeleteExtra,
+                ExcludeHidden = rule.IncludeHidden,
+            };
+            if (rule.ExcludeDirs?.Any() ?? false)
+                conf.ExcludeDirs = rule.ExcludeDirs?.ToArray();
+            if (rule.ExcludeFiles?.Any() ?? false)
+                conf.ExcludeFiles = rule.ExcludeFiles?.ToArray();
+            if (rule.IncludeDirs?.Any() ?? false)
+                conf.IncludeDirs = rule.IncludeDirs?.ToArray();
+            if (rule.IncludeFiles?.Any() ?? false)
+                conf.IncludeFiles = rule.IncludeFiles?.ToArray();
+            sync.Log = m => Log.Debug("SyncLib: {SyncLibLogMessage}", m);
+            sync.Start(conf);
         }
     }
 }

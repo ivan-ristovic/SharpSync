@@ -37,18 +37,18 @@ namespace SharpSync
                 path = SyncService.DefaultConfigPath;
 
             if (!File.Exists(path)) {
-                Log.Error("Configuration file {ConfigPath} not found!", path);
-                Log.Information("Do you want to create a new blank config file at given path? (y/N)");
+                Log.Fatal("Configuration file {ConfigPath} not found!", path);
+                Console.WriteLine("Do you want to create a new blank config file at given path? (y/N)");
                 ConsoleKeyInfo key = Console.ReadKey(true);
                 if (key.Key == ConsoleKey.Y) {
                     var defConfig = new SyncConfig();
-                    defConfig.ZipExePath = "insert_zip_program_path_here";
+                    defConfig.SevenZipPath = "insert_7z_path_here";
                     defConfig.Rules = new List<SyncRule> {
                         new SyncRule { Id = 1, SrcPath = "insert_src_path", DstPath = "insert_dst_path" },
                         new SyncRule { Id = 2, SrcPath = "insert_src_path", DstPath = "insert_dst_path" },
                     };
                     await Service.WriteConfigAsync(defConfig, path);
-                    Log.Information("Empty config file created. Please refill it and restart the program");
+                    Console.WriteLine("Empty config file created. Please refill it and restart the program");
                     Environment.Exit(1);
                 }
             } else {

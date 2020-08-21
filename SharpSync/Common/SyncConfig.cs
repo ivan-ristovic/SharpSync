@@ -5,8 +5,8 @@ namespace SharpSync.Common
 {
     public sealed class SyncConfig
     {
-        [JsonProperty("zip-path")]
-        public string? ZipExePath { get; set; }
+        [JsonProperty("7z-path")]
+        public string? SevenZipPath { get; set; }
 
         [JsonProperty("rules")]
         public List<SyncRule>? Rules { get; set; }

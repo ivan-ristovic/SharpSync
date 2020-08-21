@@ -2,39 +2,70 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
 using CommandLine;
+using Newtonsoft.Json;
 using Serilog;
 using SharpSync.Common;
-using SharpSync.Database;
 using SharpSync.Services;
 
 namespace SharpSync
 {
     internal static class Program
     {
+        private static SyncService Service { get; } = new SyncService();
+
+
         internal static Task Main(string[] args)
         {
             return Parser.Default.ParseArguments<ListOptions, AddOptions, RemoveOptions, SyncOptions>(args)
                 .MapResult(
-                    (ListOptions o) => ListSyncRules(o),
-                    (AddOptions o) => AddSyncRule(o),
-                    (RemoveOptions o) => RemoveSyncRule(o),
-                    (SyncOptions o) => Synchronize(o),
+                    (ListOptions o) => ListSyncRulesAsync(o),
+                    (AddOptions o) => AddSyncRuleAsync(o),
+                    (RemoveOptions o) => RemoveSyncRulesAsync(o),
+                    (SyncOptions o) => SynchronizeAsync(o),
                     errs => Task.FromResult(1)
                 );
         }
 
-        private static async Task ListSyncRules(ListOptions _)
+
+        private static async Task InitializeServiceAsync(string? path)
+        {
+            if (string.IsNullOrWhiteSpace(path))
+                path = SyncService.DefaultConfigPath;
+
+            if (!File.Exists(path)) {
+                Log.Error("Configuration file {ConfigPath} not found!", path);
+                Log.Information("Do you want to create a new blank config file at given path? (y/N)");
+                ConsoleKeyInfo key = Console.ReadKey(true);
+                if (key.Key == ConsoleKey.Y) {
+                    var defConfig = new SyncConfig();
+                    defConfig.ZipExePath = "insert_zip_program_path_here";
+                    defConfig.Rules = new List<SyncRule> {
+                        new SyncRule { Id = 1, SrcPath = "insert_src_path", DstPath = "insert_dst_path" },
+                        new SyncRule { Id = 2, SrcPath = "insert_src_path", DstPath = "insert_dst_path" },
+                    };
+                    await Service.WriteConfigAsync(defConfig, path);
+                    Log.Information("Empty config file created. Please refill it and restart the program");
+                    Environment.Exit(1);
+                }
+            } else {
+                await Service.LoadConfigAsync(path);
+            }
+        }
+
+        private static async Task ListSyncRulesAsync(ListOptions o)
         {
             Setup.Logger(verbose: false);
+            await InitializeServiceAsync(o.ConfigPath);
 
-            IReadOnlyList<SyncRule> rules = await DatabaseService.GetAllSyncRules();
+            IReadOnlyList<SyncRule> rules = Service.GetRules();
             int padWidth = "Destination".Length;
             if (rules.Any()) {
-                int maxSrcWidth = Math.Max(padWidth, rules.Max(r => r.Source.Path.Length));
-                int maxDstWidth = Math.Max(padWidth, rules.Max(r => r.Destination.Path.Length));
+                int maxSrcWidth = Math.Max(padWidth, rules.Max(r => r.SrcPath.Length));
+                int maxDstWidth = Math.Max(padWidth, rules.Max(r => r.DstPath.Length));
                 padWidth = Math.Max(maxSrcWidth, maxDstWidth);
             }
             int tableWidth = padWidth + 9;
@@ -57,41 +88,49 @@ namespace SharpSync
                 => sb.Append('+').Append('-', width).Append('+').AppendLine();
         }
 
-        private static Task AddSyncRule(AddOptions o)
+        private static async Task AddSyncRuleAsync(AddOptions o)
         {
             Setup.Logger(o.Verbose);
             Log.Information("Adding sync rule {Source} -> {Destination}", o.Source, o.Destination);
             if (o.ShouldZip)
                 Log.Information("Compression requested.");
 
-            if (string.IsNullOrWhiteSpace(o.Source) || string.IsNullOrWhiteSpace(o.Destination)) { 
+            if (string.IsNullOrWhiteSpace(o.Source) || string.IsNullOrWhiteSpace(o.Destination)) {
                 Log.Fatal("Need to provide source and destination paths");
-                return Task.CompletedTask;
+                return;
             }
 
-            return DatabaseService.AddSyncRule(o.Source, o.Destination, o.ShouldZip);
+            await InitializeServiceAsync(o.ConfigPath);
+            await Service.AddRuleAsync(new SyncRule {
+                SrcPath = o.Source,
+                DstPath = o.Destination,
+                ShouldZip = o.ShouldZip,
+                TopDirectoryOnly = o.TopDirectoryOnly,
+            });
         }
 
-        private static Task RemoveSyncRule(RemoveOptions o)
+        private static async Task RemoveSyncRulesAsync(RemoveOptions o)
         {
             Setup.Logger(o.Verbose);
+
             if ((o.Indexes is null || !o.Indexes.Any()) && !o.All) {
                 Log.Warning("No ID specified to remove. Did you want to remove all sync rules? If so, use option `-a`.");
-                return Task.CompletedTask;
+                return;
             }
             if (o.Indexes.Any())
                 Log.Information("Removing sync rule(s): {RuleIndexes}", o.Indexes);
             else
                 Log.Information("Removing all sync rules");
 
-            return DatabaseService.RemoveSyncRules(o.Indexes);
+            await InitializeServiceAsync(o.ConfigPath);
+            await Service.RemoveRulesAsync(o.All ? Service.GetRules().Select(r => r.Id) : o.Indexes);
         }
 
-        private static async Task Synchronize(SyncOptions o)
+        private static async Task SynchronizeAsync(SyncOptions o)
         {
             Setup.Logger(o.Verbose);
-            IReadOnlyList<SyncRule> rules = await DatabaseService.GetAllSyncRules();
-            SyncService.SyncAll(rules, o);
+            await InitializeServiceAsync(o.ConfigPath);
+            await Service.SyncAsync(o);
         }
     }
 }

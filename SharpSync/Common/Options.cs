@@ -4,12 +4,19 @@ using CommandLine;
 
 namespace SharpSync.Common
 {
-    [Verb("add", HelpText = "Add a new sync rule.")]
-    internal sealed class AddOptions
+    internal abstract class SyncOptionsBase
     {
         [Option('v', "verbose", Required = false, HelpText = "Set output to verbose messages.")]
         public bool Verbose { get; set; }
 
+        [Option('c', "config", Required = false, HelpText = "Configuration file path.")]
+        public string? ConfigPath { get; set; }
+    }
+
+
+    [Verb("add", HelpText = "Add a new sync rule.")]
+    internal sealed class AddOptions : SyncOptionsBase
+    {
         [Value(0, Required = true, HelpText = "Source path.")]
         public string? Source { get; set; }
 
@@ -18,14 +25,14 @@ namespace SharpSync.Common
 
         [Option('z', "zip", Required = false, HelpText = "Create archive instead of regular copy.")]
         public bool ShouldZip { get; set; }
+
+        [Option('t', "top", Required = false, HelpText = "Top directory only.")]
+        public bool TopDirectoryOnly { get; set; }
     }
 
     [Verb("remove", HelpText = "Remove existing sync rule.")]
-    internal sealed class RemoveOptions
+    internal sealed class RemoveOptions : SyncOptionsBase
     {
-        [Option('v', "verbose", Required = false, HelpText = "Set output to verbose messages.")]
-        public bool Verbose { get; set; }
-
         [Option('a', "all", Required = false, HelpText = "Remove all sync rules.")]
         public bool All { get; set; }
 
@@ -36,18 +43,15 @@ namespace SharpSync.Common
     }
 
     [Verb("list", HelpText = "List all registered sync rules.")]
-    internal sealed class ListOptions
+    internal sealed class ListOptions : SyncOptionsBase
     {
         // TODO filters?
         // TODO search
     }
 
     [Verb("sync", HelpText = "Synchronize.")]
-    internal sealed class SyncOptions
+    internal sealed class SyncOptions : SyncOptionsBase
     {
-        [Option('v', "verbose", Required = false, HelpText = "Set output to verbose messages.")]
-        public bool Verbose { get; set; }
-
         [Option('d', "delete", Required = false, HelpText = "Delete files from destination path which aren't found in source path.")]
         public bool DeleteExtra { get; set; }
 

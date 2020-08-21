@@ -2,32 +2,92 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using BlinkSyncLib;
+using Newtonsoft.Json;
 using Serilog;
 using SharpSync.Common;
-using SharpSync.Database;
+using SharpSync.Extensions;
 
 namespace SharpSync.Services
 {
-    internal static class SyncService
+    internal sealed class SyncService
     {
-        public static void SyncAll(IReadOnlyList<SyncRule> rules, SyncOptions opts)
-        {
-            if (!rules.Any())
-                Log.Warning("Nothing to sync");
+        public static readonly string DefaultConfigPath = "config.json";
 
-            foreach (SyncRule rule in rules) {
-                Log.Debug("Processing rule {RuleId}", rule.Id);
+        private SyncConfig Config { get; set; }
+        private string ConfigPath { get; set; }
+
+
+        public SyncService()
+        {
+            this.Config = new SyncConfig();
+            this.ConfigPath = DefaultConfigPath;
+        }
+
+
+        public async Task<bool> LoadConfigAsync(string path)
+        {
+            try {
+                string json = await File.ReadAllTextAsync(path);
+                this.Config = JsonConvert.DeserializeObject<SyncConfig>(json);
+                this.ConfigPath = path;
+            } catch (Exception e) {
+                Log.Fatal(e, "An exception occured while reading the configuration file: {ConfigPath}", path);
+                return false;
+            }
+            return true;
+        }
+
+        public Task WriteConfigAsync(SyncConfig? cfg = null, string? path = null)
+            => File.WriteAllTextAsync(path ?? this.ConfigPath, JsonConvert.SerializeObject(cfg ?? this.Config, Formatting.Indented));
+
+        public Task AddRuleAsync(SyncRule rule)
+        {
+            this.Config.Rules ??= new List<SyncRule>();
+            if (rule.Id == 0 || this.Config.Rules.Any(sr => sr.Id == rule.Id))
+                rule.Id = this.Config.Rules.Max(sr => sr.Id) + 1;
+
+            if (this.Config.Rules.Any(sr => sr.SrcPath.IsParentPathOf(rule.SrcPath) && !sr.TopDirectoryOnly)) {
+                Log.Warning("This rule is already covered by another rule.");
+                return Task.CompletedTask;
+            }
+
+            this.Config.Rules.Add(rule);
+            return this.WriteConfigAsync();
+        }
+
+        public Task RemoveRulesAsync(IEnumerable<int>? ids)
+        {
+            if (ids is { }) {
+                this.Config.Rules?.RemoveAll(sr => ids.Contains(sr.Id));
+                return this.WriteConfigAsync();
+            }
+            return Task.CompletedTask;
+        }
+
+        public IReadOnlyList<SyncRule> GetRules()
+            => this.Config.Rules?.AsReadOnly() ?? new List<SyncRule>().AsReadOnly();
+
+        public async Task SyncAsync(SyncOptions opts)
+        {
+            if (this.Config.Rules is null || !this.Config.Rules.Any()) {
+                Log.Warning("Nothing to sync");
+                return;
+            }
+
+            foreach (SyncRule rule in this.Config.Rules) {
+                Log.Debug("Processing rule:{NL}{Src} -> {Dst}", Environment.NewLine, rule.SrcPath, rule.DstPath);
                 try {
-                    FileAttributes srcAttrs = File.GetAttributes(rule.Source.Path);
-                    FileAttributes dstAttrs = File.GetAttributes(rule.Destination.Path);
+                    FileAttributes srcAttrs = File.GetAttributes(rule.SrcPath);
+                    FileAttributes dstAttrs = File.GetAttributes(rule.DstPath);
 
                     if (!dstAttrs.HasFlag(FileAttributes.Directory) || !srcAttrs.HasFlag(FileAttributes.Directory)) {
                         Log.Error("Paths have to point to directories:{NL}{Rule}", Environment.NewLine, rule.ToTableRow(printTopLine: true));
                         continue;
                     }
 
-                    var sync = new Sync(rule.Source.Path, rule.Destination.Path);
+                    var sync = new Sync(rule.SrcPath, rule.DstPath);
                     var conf = new InputParams {
                         DeleteFromDest = opts.DeleteExtra,
                         ExcludeHidden = opts.IncludeHidden,
@@ -40,9 +100,8 @@ namespace SharpSync.Services
                         conf.IncludeDirs = opts.IncludeDirs?.ToArray();
                     if (opts.IncludeFiles?.Any() ?? false)
                         conf.IncludeFiles = opts.IncludeFiles?.ToArray();
-                    sync.Configuration = conf;
                     sync.Log = m => Log.Debug("SyncLib: {SyncLibLogMessage}", m);
-                    sync.Start();
+                    sync.Start(conf);
 
                 } catch (FileNotFoundException e) {
                     Log.Error(e, "Source/Destination not found for rule:{NL}{Rule}", Environment.NewLine, rule.ToTableRow(printTopLine: true));

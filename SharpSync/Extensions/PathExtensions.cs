@@ -5,7 +5,7 @@ namespace SharpSync.Extensions
 {
     internal static class PathExtensions
     {
-        public static bool IsSubPathOf(this string src, string dst)
+        public static bool IsParentPathOf(this string src, string dst)
         {
             string[] srcParts = src.Split(Path.DirectorySeparatorChar);
             string[] dstParts = dst.Split(Path.DirectorySeparatorChar);

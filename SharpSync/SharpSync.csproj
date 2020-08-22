@@ -13,10 +13,4 @@
     <PackageReference Include="Serilog.Sinks.Console" Version="4.0.0-dev-00834" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Reference Include="BlinkSyncLib">
-      <HintPath>..\Dependencies\BlinkSyncLib.dll</HintPath>
-    </Reference>
-  </ItemGroup>
-
 </Project>

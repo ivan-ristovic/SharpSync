@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-using BlinkSyncLib;
 using Newtonsoft.Json;
 using Serilog;
 using SharpSync.Common;
@@ -48,7 +47,7 @@ namespace SharpSync.Services
             if (rule.Id == 0 || this.Config.Rules.Any(sr => sr.Id == rule.Id))
                 rule.Id = this.Config.Rules.Max(sr => sr.Id) + 1;
 
-            if (this.Config.Rules.Any(sr => sr.SrcPath.IsParentPathOf(rule.SrcPath) && !sr.TopDirectoryOnly)) {
+            if (this.Config.Rules.Any(sr => sr.SrcPath.IsParentPathOf(rule.SrcPath) && !sr.Options.TopDirectoryOnly)) {
                 Log.Warning("This rule is already covered by another rule.");
                 return Task.CompletedTask;
             }
@@ -87,7 +86,8 @@ namespace SharpSync.Services
                         continue;
                     }
 
-                    await this.ProcessRuleAsync(rule);
+                    if (!await this.ProcessDirectoryAsync(rule.SrcPath, rule.DstPath, rule.Options, true))
+                        Log.Error("Errors occured while copying");
                 } catch (FileNotFoundException e) {
                     Log.Error(e, "Source/Destination not found for rule:{NL}{Rule}", Environment.NewLine, rule.ToTableRow(printTopLine: true));
                 } catch (IOException e) {
@@ -99,23 +99,86 @@ namespace SharpSync.Services
         }
 
 
-        private async Task ProcessRuleAsync(SyncRule rule)
+        private async Task<bool> ProcessDirectoryAsync(string srcPath, string dstPath, SyncRuleOptions cfg, bool top = false)
         {
-            var sync = new Sync(rule.SrcPath, rule.DstPath);
-            var conf = new InputParams {
-                DeleteFromDest = rule.DeleteExtra,
-                ExcludeHidden = rule.IncludeHidden,
-            };
-            if (rule.ExcludeDirs?.Any() ?? false)
-                conf.ExcludeDirs = rule.ExcludeDirs?.ToArray();
-            if (rule.ExcludeFiles?.Any() ?? false)
-                conf.ExcludeFiles = rule.ExcludeFiles?.ToArray();
-            if (rule.IncludeDirs?.Any() ?? false)
-                conf.IncludeDirs = rule.IncludeDirs?.ToArray();
-            if (rule.IncludeFiles?.Any() ?? false)
-                conf.IncludeFiles = rule.IncludeFiles?.ToArray();
-            sync.Log = m => Log.Debug("SyncLib: {SyncLibLogMessage}", m);
-            sync.Start(conf);
+            var srcDir = new DirectoryInfo(srcPath);
+            var dstDir = new DirectoryInfo(dstPath);
+
+            if (Utilities.IsExempted(srcDir.Name, cfg.IncludeDirs, cfg.ExcludeDirs))
+                return true;
+
+            // TODO zip
+
+            if (!dstDir.Exists) {
+                Log.Information("Creating directory: {0}", dstDir.FullName);
+                dstDir.Create();
+            }
+
+            IReadOnlyDictionary<string, FileInfo> srcFiles = Utilities.GetFiles(srcDir, cfg);
+            IReadOnlyDictionary<string, FileInfo> dstFiles = Utilities.GetFiles(dstDir, cfg);
+
+            foreach ((string _, FileInfo srcFile) in srcFiles) {
+                FileInfo? dstFile = dstFiles.GetValueOrDefault(srcFile.Name);
+                if (!Utilities.AreSynced(srcFile, dstFile)) {
+                    string dstFullPath = Path.Combine(dstPath, srcFile.Name);
+                    try {
+                        if (dstFile?.IsReadOnly ?? false)
+                            dstFile.IsReadOnly = false;
+                        Log.Information("Copying: {0} -> {1}", srcFile.FullName, Path.GetFullPath(dstFullPath));
+                        await Utilities.CopyFileAsync(srcFile.FullName, dstFullPath);
+                        File.SetAttributes(dstFullPath, srcFile.Attributes);
+                        File.SetLastWriteTime(dstFullPath, srcFile.LastWriteTime);
+                        File.SetLastWriteTimeUtc(dstFullPath, srcFile.LastWriteTimeUtc);
+                    } catch (Exception ex) {
+                        Log.Error(ex, "Failed to copy: {0} -> {1}", srcFile.FullName, dstFullPath);
+                        return false;
+                    }
+                }
+            }
+
+            if (cfg.DeleteExtraFiles) {
+                foreach ((string _, FileInfo dstFile) in dstFiles) {
+                    if (!srcFiles.ContainsKey(dstFile.Name)) {
+                        if (Utilities.IsExempted(dstFile.Name, null, cfg.DelExcludeFiles))
+                            continue;
+                        try {
+                            Log.Information("Deleting: {0}", dstFile.FullName);
+                            dstFile.IsReadOnly = false;
+                            dstFile.Delete();
+                        } catch (Exception ex) {
+                            Log.Error(ex, "Failed to delete: {0}", dstFile.FullName);
+                            return false;
+                        }
+                    }
+                }
+            }
+
+            IReadOnlyDictionary<string, DirectoryInfo> srcSubDirs = Utilities.GetDirs(srcDir, cfg);
+            IReadOnlyDictionary<string, DirectoryInfo> dstSubDirs = Utilities.GetDirs(dstDir, cfg);
+
+            bool succ = true;
+            if (!top || !cfg.TopDirectoryOnly) {
+                foreach ((string _, DirectoryInfo srcSubDir) in srcSubDirs)
+                    succ |= await this.ProcessDirectoryAsync(srcSubDir.FullName, Path.Combine(dstPath, srcSubDir.Name), cfg, false);
+            }
+
+            if (cfg.DeleteExtraDirs) {
+                foreach ((string _, DirectoryInfo dstSubDir) in dstSubDirs) {
+                    if (!srcSubDirs.ContainsKey(dstSubDir.Name)) {
+                        if (Utilities.IsExempted(dstSubDir.Name, null, cfg.DelExcludeDirs))
+                            continue;
+                        try {
+                            Log.Information("Deleting directory: {0}", dstSubDir.FullName);
+                            Utilities.DeleteDirectory(dstSubDir);
+                        } catch (Exception ex) {
+                            Log.Error(ex, "Failed to delete directory: {0}", dstSubDir.FullName);
+                            return false;
+                        }
+                    }
+                }
+            }
+
+            return succ;
         }
     }
 }

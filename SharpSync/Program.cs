@@ -104,8 +104,10 @@ namespace SharpSync
             await Service.AddRuleAsync(new SyncRule {
                 SrcPath = o.Source,
                 DstPath = o.Destination,
-                ShouldZip = o.ShouldZip,
-                TopDirectoryOnly = o.TopDirectoryOnly,
+                Options = new SyncRuleOptions {
+                    ShouldZip = o.ShouldZip,
+                    TopDirectoryOnly = o.TopDirectoryOnly,
+                }
             });
         }
 

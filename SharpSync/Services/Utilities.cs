@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Data.Common;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
@@ -60,8 +61,8 @@ namespace SharpSync.Services
         {
             return (dst is { })
                 && (src.Length == dst.Length)
-                && (src.LastWriteTime == dst.LastWriteTime)
-                && (src.Attributes == dst.Attributes);
+                && (src.LastWriteTimeUtc == dst.LastWriteTimeUtc)
+                ;
         }
 
         public static async Task CopyFileAsync(string src, string dst)

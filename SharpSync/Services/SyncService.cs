@@ -118,6 +118,8 @@ namespace SharpSync.Services
             IReadOnlyDictionary<string, FileInfo> dstFiles = Utilities.GetFiles(dstDir, cfg);
 
             foreach ((string _, FileInfo srcFile) in srcFiles) {
+                if (Utilities.IsExempted(srcFile.Name, cfg.IncludeFiles, cfg.ExcludeFiles))
+                    continue;
                 FileInfo? dstFile = dstFiles.GetValueOrDefault(srcFile.Name);
                 if (!Utilities.AreSynced(srcFile, dstFile)) {
                     string dstFullPath = Path.Combine(dstPath, srcFile.Name);

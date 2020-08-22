@@ -125,7 +125,10 @@ namespace SharpSync.Services
                         if (dstFile?.IsReadOnly ?? false)
                             dstFile.IsReadOnly = false;
                         Log.Information("Copying: {0} -> {1}", srcFile.FullName, Path.GetFullPath(dstFullPath));
-                        await Utilities.CopyFileAsync(srcFile.FullName, dstFullPath);
+                        if (Utilities.IsHidden(srcFile))
+                            srcFile.CopyTo(dstFullPath, true);
+                        else
+                            await Utilities.CopyFileAsync(srcFile.FullName, dstFullPath);
                         File.SetAttributes(dstFullPath, srcFile.Attributes);
                         File.SetLastWriteTime(dstFullPath, srcFile.LastWriteTime);
                         File.SetLastWriteTimeUtc(dstFullPath, srcFile.LastWriteTimeUtc);
